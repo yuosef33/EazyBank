@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: yuosef
+      MYSQL_DATABASE: eazybank
+    volumes:
+      - mySql-eazybank:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - EazyBank_project
+
+volumes:
+  mySql-eazybank:
+
+networks:
+  EazyBank_project:
