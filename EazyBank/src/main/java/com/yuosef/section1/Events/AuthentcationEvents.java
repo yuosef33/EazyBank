@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class AuthentcationEvents {
-        @EventListener
+    @EventListener
     public void onSucces (AuthenticationSuccessEvent successEvent){
             log.info("Authentication Success",successEvent.getAuthentication().getName());
         }
