@@ -1,6 +1,8 @@
 package com.yuosef.section1.Config;
 
 import com.yuosef.section1.Config.Filter.AuthoritiesLoggingAfterFilter;
+import com.yuosef.section1.Config.Filter.JwtTokenGeneratorFilter;
+import com.yuosef.section1.Config.Filter.JwtTokenValidatorFilter;
 import com.yuosef.section1.Config.Filter.RequestValidationBeforeFilter;
 import com.yuosef.section1.ExceptionHandling.CustomAccessDeniedHandler;
 import com.yuosef.section1.ExceptionHandling.CustomBasicAuthenticationEntryPorint;
@@ -8,8 +10,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -19,6 +24,7 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 import static org.springframework.security.config.Customizer.withDefaults;
@@ -33,8 +39,7 @@ public class SecurityConfig {
         CsrfTokenRequestAttributeHandler csrfTokenRequestAttributeHandler = new CsrfTokenRequestAttributeHandler();
 
 
-        http.securityContext(context -> context.requireExplicitSave(false))
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.ALWAYS))
+        http.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .cors(cors -> cors.configurationSource(new CorsConfigurationSource() {
                     @Override
                     public CorsConfiguration getCorsConfiguration(HttpServletRequest request) {
@@ -42,17 +47,20 @@ public class SecurityConfig {
                         corsConfiguration.addAllowedOrigin("http://localhost:4200");
                         corsConfiguration.setAllowedMethods(Collections.singletonList("*"));
                         corsConfiguration.setAllowedHeaders(Collections.singletonList("*"));
+                        corsConfiguration.setExposedHeaders(Arrays.asList("Authorization"));
                         corsConfiguration.setAllowCredentials(true);
                         corsConfiguration.setMaxAge(3600L);
                         return corsConfiguration;
                     }
                 }))
                 .csrf(csrfConfig -> csrfConfig.csrfTokenRequestHandler(csrfTokenRequestAttributeHandler)
-                        .ignoringRequestMatchers( "/contact","/register")
+                        .ignoringRequestMatchers( "/contact","/register","apiLogin")
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
                 .addFilterBefore(new RequestValidationBeforeFilter(), BasicAuthenticationFilter.class)
                 .addFilterAfter(new AuthoritiesLoggingAfterFilter(), BasicAuthenticationFilter.class)
+                .addFilterAfter( new JwtTokenGeneratorFilter(), BasicAuthenticationFilter.class)
+                .addFilterBefore(new JwtTokenValidatorFilter(), BasicAuthenticationFilter.class)
                 .requiresChannel((rcc)-> rcc.anyRequest().requiresInsecure())
                 .authorizeHttpRequests(
                  (request) -> request
@@ -61,7 +69,7 @@ public class SecurityConfig {
                          .requestMatchers("/myLoans").hasRole("USER")
                          .requestMatchers("/myCards").hasRole("USER")
                          .requestMatchers("/user").authenticated()
-                         .requestMatchers("/notices", "/contact", "/error", "/register", "/invalidSession").permitAll()
+                         .requestMatchers("/notices", "/contact", "/error", "/register", "/invalidSession","/apiLogin").permitAll()
 
         );
         http.formLogin(withDefaults());
@@ -70,6 +78,14 @@ public class SecurityConfig {
         return http.build();
     }
 
+    @Bean
+    public AuthenticationManager authenticationManager(UserDetailsService userDetailService, PasswordEncoder passwordEncoder){
+        EazyBankUsernamePwdAuthenticationProvider authenticationProvider =
+                new EazyBankUsernamePwdAuthenticationProvider(userDetailService,passwordEncoder);
+        ProviderManager providerManager = new ProviderManager(authenticationProvider);
+        providerManager.setEraseCredentialsAfterAuthentication(false);
+        return providerManager;
+    }
 
 
 

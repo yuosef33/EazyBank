@@ -18,12 +18,12 @@ public class AccountController {
 
     @GetMapping("/myAccount")
     public Account getAccountDetails(@RequestParam long id) {
-        Account accounts = accountsRepository.findById(id).orElseThrow(()->
-                new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found"));
+        Account accounts = accountsRepository.findByCustomerId(id);
+
         if (accounts != null) {
             return accounts;
         } else {
-            return null;
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Account not found");
         }
     }
 }
