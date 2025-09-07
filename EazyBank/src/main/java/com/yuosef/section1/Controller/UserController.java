@@ -36,31 +36,8 @@ public class UserController {
 
 
     private final CustomerDao customerRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final AuthenticationManager authenticationManager;
-    private final HttpServletRequest request;
-    private final Environment env;
 
-    @PostMapping("/register")
-    public ResponseEntity<String> registerUser(@RequestBody Customer customer) {
-        try {
-            String hashPwd = passwordEncoder.encode(customer.getPwd());
-            customer.setPwd(hashPwd);
-            customer.setCreateDt(new Date(System.currentTimeMillis()));
-            Customer savedCustomer = customerRepository.save(customer);
 
-            if (savedCustomer.getId() > 0) {
-                return ResponseEntity.status(HttpStatus.CREATED).
-                        body("Given user details are successfully registered");
-            } else {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).
-                        body("User registration failed");
-            }
-        } catch (Exception ex) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).
-                    body("An exception occurred: " + ex.getMessage());
-        }
-    }
 
     @RequestMapping("/user")
     public Customer getUserDetailsAfterLogin(Authentication authentication) {
@@ -68,37 +45,5 @@ public class UserController {
         return optionalCustomer.orElse(null);
     }
 
-    @PostMapping("/apiLogin")
-    public ResponseEntity<LoginResponseDto> apiLogin(@RequestBody LoginRequestDto loginRequest) {
-        String jwt = "";
-      /*  Authentication alreadyauthenticated= SecurityContextHolder.getContext().getAuthentication();   // this for checking if user is already authenticated then i resend the token
-        if(alreadyauthenticated.isAuthenticated()){
-            return ResponseEntity.ok()
-                    .body(new LoginResponseDto(HttpStatus.OK.getReasonPhrase(), request.getHeader("Authorization")));
-        }*/
-        Authentication authentication= UsernamePasswordAuthenticationToken.unauthenticated
-                (loginRequest.email(),loginRequest.password());
-       Authentication authenticationResponse= authenticationManager.authenticate(authentication);
 
-       if (null != authenticationResponse && authenticationResponse.isAuthenticated()){
-           if(null != env){
-               String secret = env.getProperty(ApplicationConstants.JWT_SECRET_KEY
-                       ,ApplicationConstants.JWT_SECRET_DEFAULT_VALUE);
-               SecretKey secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-                jwt= Jwts.builder().issuer("eazyBank").subject("JWT-TOKEN")
-                       .claim("username",authenticationResponse.getName())
-                       .claim("authorities",authenticationResponse.getAuthorities().stream().map(
-                               GrantedAuthority::getAuthority
-                       ).collect(Collectors.joining(",")))
-                       .issuedAt(new Date())
-                       .expiration(new Date((new Date()).getTime()+30000000))
-                       .signWith(secretKey).compact();
-           }
-       }else {
-           return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new LoginResponseDto(HttpStatus.UNAUTHORIZED.getReasonPhrase(),"Invalid credentials"));
-       }
-        return ResponseEntity.ok().header(ApplicationConstants.JWT_HEADER,jwt)
-                .body(new LoginResponseDto(HttpStatus.OK.getReasonPhrase(),jwt));
-
-    }
 }

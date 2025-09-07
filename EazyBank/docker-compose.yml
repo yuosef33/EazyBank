@@ -12,7 +12,24 @@ services:
     networks:
       - EazyBank_project
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.0
+    container_name: keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8080"
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+    command:
+      - start-dev
+      - --db=dev-file
+    networks:
+      - EazyBank_project
+
 volumes:
+  keycloak-data:
   mySql-eazybank:
 
 networks:

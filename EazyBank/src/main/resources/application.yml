@@ -14,6 +14,22 @@ spring:
     import: application_prod.yml
   profiles:
     active: prod
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWK_SET_URI:http://localhost:8180/realms/eazybankdev/protocol/openid-connect/certs}
+
+
+#  security:
+#    oauth2:
+#      resourceserver:
+#        opaque:
+#          introspection-uri": ${INTROSPECT_URI:http://localhost:8180/realms/eazybankdev/protocol/openid-connect/token/introspect}
+#          introspection-client-id: ${INTROSPECT_ID:eazybankintrospect}
+#          introspection-client-secret: ${INTROSPECT_SECRET:w1IvV88jPp3WEKumOTibszrJzpIWx4Ql}
+
 logging:
   pattern:
     console: ${LOGPATTERN_CONSOLE:%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%logger{15}) - %msg%n}

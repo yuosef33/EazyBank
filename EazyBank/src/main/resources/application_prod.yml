@@ -14,6 +14,12 @@ spring:
       hibernate:
         format_sql: ${JPA_FORMATSQL:false}
 
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWK_SET_URI:http://localhost:8180/realms/eazybankdev/protocol/openid-connect/certs}
+
 logging:
   pattern:
     console: ${LOGPATTERN_CONSOLE:%green(%d{HH:mm:ss.SSS}) %blue(%-5level) %red([%thread]) %yellow(%logger{15}) - %msg%n}

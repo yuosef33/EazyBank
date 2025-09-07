@@ -1,22 +1,15 @@
 package com.yuosef.section1.Config;
 
-import com.yuosef.section1.Config.Filter.AuthoritiesLoggingAfterFilter;
-import com.yuosef.section1.Config.Filter.JwtTokenGeneratorFilter;
-import com.yuosef.section1.Config.Filter.JwtTokenValidatorFilter;
-import com.yuosef.section1.Config.Filter.RequestValidationBeforeFilter;
 import com.yuosef.section1.ExceptionHandling.CustomAccessDeniedHandler;
 import com.yuosef.section1.ExceptionHandling.CustomBasicAuthenticationEntryPorint;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.crypto.factory.PasswordEncoderFactories;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
@@ -33,8 +26,19 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @Profile("!prod")
 public class SecurityConfig {
 
+//    @Value("${spring.security.oauth2.resourceserver.opaque.introspection-uri}")
+//    String introspectionUri;
+//
+//    @Value("${spring.security.oauth2.resourceserver.opaque.introspection-client-id}")
+//    String clientId;
+//
+//    @Value("${spring.security.oauth2.resourceserver.opaque.introspection-client-secret}")
+//    String clientSecret;
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception{
+        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(new KeyCloakRoleConverter());
 
         CsrfTokenRequestAttributeHandler csrfTokenRequestAttributeHandler = new CsrfTokenRequestAttributeHandler();
 
@@ -54,57 +58,27 @@ public class SecurityConfig {
                     }
                 }))
                 .csrf(csrfConfig -> csrfConfig.csrfTokenRequestHandler(csrfTokenRequestAttributeHandler)
-                        .ignoringRequestMatchers( "/contact","/register","apiLogin")
+                        .ignoringRequestMatchers( "/contact","/register")
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
-                .addFilterBefore(new RequestValidationBeforeFilter(), BasicAuthenticationFilter.class)
-                .addFilterAfter(new AuthoritiesLoggingAfterFilter(), BasicAuthenticationFilter.class)
-                .addFilterAfter( new JwtTokenGeneratorFilter(), BasicAuthenticationFilter.class)
-                .addFilterBefore(new JwtTokenValidatorFilter(), BasicAuthenticationFilter.class)
                 .requiresChannel((rcc)-> rcc.anyRequest().requiresInsecure())
                 .authorizeHttpRequests(
                  (request) -> request
                          .requestMatchers("/myAccount").hasRole("USER")
                          .requestMatchers("/myBalance").hasAnyRole("USER", "ADMIN")
-                         .requestMatchers("/myLoans").hasRole("USER")
+                         .requestMatchers("/myLoans").authenticated()
                          .requestMatchers("/myCards").hasRole("USER")
                          .requestMatchers("/user").authenticated()
-                         .requestMatchers("/notices", "/contact", "/error", "/register", "/invalidSession","/apiLogin").permitAll()
+                         .requestMatchers("/notices", "/contact", "/error", "/register").permitAll()
 
         );
-        http.formLogin(withDefaults());
-        http.httpBasic(hbc -> hbc.authenticationEntryPoint(new CustomBasicAuthenticationEntryPorint()));
+          http.oauth2ResourceServer(rsc -> rsc.jwt(jwtConfigurer -> jwtConfigurer.jwtAuthenticationConverter(jwtAuthenticationConverter)));
+        // http.oauth2ResourceServer(rsc -> rsc.opaqueToken(otc -> otc.authenticationConverter
+            //    (new KeycloakOpaqueRoleConverter()).introspectionUri(this.introspectionUri).introspectionClientCredentials(this.clientId, this.clientSecret)));
         http.exceptionHandling(ehc -> ehc.accessDeniedHandler(new CustomAccessDeniedHandler()));
         return http.build();
     }
 
-    @Bean
-    public AuthenticationManager authenticationManager(UserDetailsService userDetailService, PasswordEncoder passwordEncoder){
-        EazyBankUsernamePwdAuthenticationProvider authenticationProvider =
-                new EazyBankUsernamePwdAuthenticationProvider(userDetailService,passwordEncoder);
-        ProviderManager providerManager = new ProviderManager(authenticationProvider);
-        providerManager.setEraseCredentialsAfterAuthentication(false);
-        return providerManager;
-    }
-
-
-
-//    @Bean
-//    public UserDetailsService userDetailService(DataSource datasource){
-//         return new JdbcUserDetailsManager(datasource);
-//    }
-
-
-
-    @Bean
-    public PasswordEncoder passwordEncoder(){
-        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
-    }
-
-//    @Bean
-//    public CompromisedPasswordChecker compromisedPasswordChecker(){
-//        return new HaveIBeenPwnedRestApiPasswordChecker();
-//    }
 
 
 }
